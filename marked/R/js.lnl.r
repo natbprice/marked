@@ -144,38 +144,52 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
   # Add on likelihood component for first capture -------------------------
   # Probability of entrance parameter matrix
   pents <- get.pent(beta.pent, model_data$pent.dm, nocc)
-  browser()
-  # 
   pents.dummy <- pents[model_data$imat$freq == 0, ]
+  
+  # Probability of purchase parameter matrix
   ps <- plogis(pbeta)
   ps.dummy <- ps[model_data$imat$freq == 0, ]
-  Phis <- get.Phi(beta.phi, model_data$Phi.dm, nocc)
-  p.occ <- ps[cbind(1:nrow(pents), model_data$imat$first)]
   ps[, nocc] <- 0
+  p.occ <- ps[cbind(1:nrow(pents), model_data$imat$first)]
+  
+  # Probability of survival prameter matrix
+  Phis <- get.Phi(beta.phi, model_data$Phi.dm, nocc)
   Phis <- cbind(Phis[, 2:nocc], rep(1, nrow(Phis)))
+  
   entry.p <- (1 - ps) * Phis * (1 - model_data$imat$First) +
     model_data$imat$First
+  
   Estar <- matrix(0, ncol = nocc, nrow = nrow(ps))
   Estar[, nocc] <- entry.p[, nocc]
   for (j in (nocc - 1):1) {
     Estar[, j] <- Estar[, j + 1] * entry.p[, j]
   }
   entry.p <- rowSums(Estar * pents * (1 - model_data$imat$Fplus)) * p.occ
+  
+  # Update likelihood
   lnl <- cjslnl$lnl - sum(model_data$imat$freq * log(entry.p))
 
   # Add on likelihood component for those not caught ----------------------
   # next add on likelihood component for those not caught from dummy 1000000,
   # 0100000,...data return complete likelihood value except that calling
   # function js adds the ui factorials to match POPAN output from MARK
+  
+  # Super-population size
   Ns <- exp(as.vector(model_data$N.dm %*% beta.N))
+  
+  # Loop over groups
   for (i in 1:length(Ns)) {
     index0 <- (i - 1) * nocc + 1
     index1 <- i * nocc
     ps <- ps.dummy[index0:index1, ]
     pents <- pents.dummy[index0:index1, ]
+    
+    # Update likelihood
     lnl <- lnl - Ns[i] *
       log(sum(diag(pents) * cjslnl$p0[model_data$imat$freq == 0][index0:index1]
               * (1 - diag(ps))))
+    
+    # Update likelihood
     lnl <- lnl - lfactorial(nobstot[i] + Ns[i]) + lfactorial(Ns[i])
   }
 
