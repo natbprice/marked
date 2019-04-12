@@ -10,16 +10,22 @@ js.lnl(par, model_data, debug = FALSE, nobstot, jsenv)
 \arguments{
 \item{par}{vector of parameter values}
 
-\item{model_data}{a list that contains: 1)imat-list of vectors and matrices constructed by
-\code{\link{process.ch}} from the capture history data, 2)Phi.dm design matrix for Phi constructed by \code{\link{create.dm}},
-3)p.dm design matrix for p constructed by \code{\link{create.dm}}, 4)pent.dm design matrix for probability of entry constructed by \code{\link{create.dm}},
-5) N.dm design matrix for estimates of number of animals not caught from
-super-population constructed by \code{\link{create.dm}},
-6)Phi.fixed matrix with 3 columns: ch number(i), occasion number(j),
-fixed value(f) to fix phi(i,j)=f, 7) p.fixed matrix with 3 columns: ch number(i), occasion number(j), 
-8) pent.fixed matrix with 3 columns: ch number(i), occasion number(j), fixed value(f) to fix pent(i,j)=f, and
-9) time.intervals intervals of time between occasions if not all 1
-fixed value(f) to fix p(i,j)=f}
+\item{model_data}{a list that contains: \enumerate{
+\item imat-list of vectors and matrices constructed by 
+\code{\link{process.ch}} from the capture history data
+\item Phi.dm design matrix for Phi constructed by \code{\link{create.dm}}
+\item p.dm design matrix for p constructed by \code{\link{create.dm}}
+\item pent.dm design matrix for probability of entry constructed by 
+\code{\link{create.dm}}
+\item N.dm design matrix for estimates of number of animals not caught from
+super-population constructed by \code{\link{create.dm}}
+\item Phi.fixed matrix with 3 columns: ch number(i), occasion number(j),
+fixed value(f) to fix phi(i,j)=f
+\item p.fixed matrix with 3 columns: ch number(i), occasion number(j),
+\item pent.fixed matrix with 3 columns: ch number(i), occasion number(j), fixed value(f) to fix pent(i,j)=f, and
+\item time.intervals intervals of time between occasions if not all 1
+fixed value(f) to fix p(i,j)=f
+}}
 
 \item{debug}{if TRUE will printout values of \code{par} and function value}
 

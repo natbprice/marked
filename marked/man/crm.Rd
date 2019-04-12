@@ -5,15 +5,16 @@
 \title{Capture-recapture model fitting function}
 \usage{
 crm(data, ddl = NULL, begin.time = 1, model = "CJS", title = "",
-  model.parameters = list(), design.parameters = list(), initial = NULL,
-  groups = NULL, time.intervals = NULL, debug = FALSE, method = "BFGS",
-  hessian = FALSE, accumulate = TRUE, chunk_size = 1e+07,
-  control = list(), refit = 1, itnmax = 5000, scale = NULL,
-  run = TRUE, burnin = 100, iter = 1000, use.admb = FALSE,
-  use.tmb = FALSE, crossed = NULL, reml = FALSE, compile = FALSE,
-  extra.args = NULL, strata.labels = NULL, clean = NULL,
-  save.matrices = TRUE, simplify = FALSE, getreals = FALSE,
-  check = FALSE, prior = FALSE, prior.list = NULL, ...)
+  model.parameters = list(), design.parameters = list(),
+  initial = NULL, groups = NULL, time.intervals = NULL,
+  debug = FALSE, method = "BFGS", hessian = FALSE,
+  accumulate = TRUE, chunk_size = 1e+07, control = list(),
+  refit = 1, itnmax = 5000, scale = NULL, run = TRUE,
+  burnin = 100, iter = 1000, use.admb = FALSE, use.tmb = FALSE,
+  crossed = NULL, reml = FALSE, compile = FALSE, extra.args = NULL,
+  strata.labels = NULL, clean = NULL, save.matrices = TRUE,
+  simplify = FALSE, getreals = FALSE, check = FALSE, prior = FALSE,
+  prior.list = NULL, ...)
 }
 \arguments{
 \item{data}{Either the raw data which is a dataframe with at least one

@@ -5,8 +5,9 @@
 \title{Compute estimates of real parameters}
 \usage{
 compute.real(model, parameter, ddl = NULL, dml = NULL, unique = TRUE,
-  vcv = FALSE, se = FALSE, chat = 1, subset = NULL, select = NULL,
-  showDesign = FALSE, include = NULL, uselink = FALSE)
+  vcv = FALSE, se = FALSE, chat = 1, subset = NULL,
+  select = NULL, showDesign = FALSE, include = NULL,
+  uselink = FALSE)
 }
 \arguments{
 \item{model}{model object}
