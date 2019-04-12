@@ -37,6 +37,8 @@ captureData <- CH %>%
   group_by(ch) %>% 
   summarize(freq = n()) 
 
+p.ch <- process.ch(captureData %>% pull(ch), captureData %>% pull(freq))
+
 proc = process.data(captureData %>% as.data.frame(), model = "js", begin.time = 1)
 ddl = make.design.data(proc)
 mod = crm(proc, ddl, hessian = TRUE)
