@@ -10,20 +10,22 @@ js.lnl(par, model_data, debug = FALSE, nobstot, jsenv)
 \arguments{
 \item{par}{vector of parameter values}
 
-\item{model_data}{a list that contains: \enumerate{
-\item imat-list of vectors and matrices constructed by 
+\item{model_data}{a list that contains: 
+\enumerate{
+\item \code{imat} list of vectors and matrices constructed by 
 \code{\link{process.ch}} from the capture history data
-\item Phi.dm design matrix for Phi constructed by \code{\link{create.dm}}
-\item p.dm design matrix for p constructed by \code{\link{create.dm}}
-\item pent.dm design matrix for probability of entry constructed by 
+\item \code{Phi.dm} design matrix for Phi constructed by \code{\link{create.dm}}
+\item \code{p.dm} design matrix for p constructed by \code{\link{create.dm}}
+\item \code{pent.dm} design matrix for probability of entry constructed by 
 \code{\link{create.dm}}
-\item N.dm design matrix for estimates of number of animals not caught from
+\item \code{N.dm} design matrix for estimates of number of animals not caught from
 super-population constructed by \code{\link{create.dm}}
-\item Phi.fixed matrix with 3 columns: ch number(i), occasion number(j),
+\item \code{Phi.fixed} matrix with 3 columns: ch number(i), occasion number(j),
 fixed value(f) to fix phi(i,j)=f
-\item p.fixed matrix with 3 columns: ch number(i), occasion number(j),
-\item pent.fixed matrix with 3 columns: ch number(i), occasion number(j), fixed value(f) to fix pent(i,j)=f, and
-\item time.intervals intervals of time between occasions if not all 1
+\item \code{p.fixed }matrix with 3 columns: ch number(i), occasion number(j),
+\item \code{pent.fixed} matrix with 3 columns: ch number(i), occasion number(j), 
+fixed value(f) to fix pent(i,j)=f
+\item \code{time.intervals} intervals of time between occasions if not all 1
 fixed value(f) to fix p(i,j)=f
 }}
 

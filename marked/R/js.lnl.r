@@ -11,21 +11,22 @@
 #' (Arnason and Schwarz 1996) of the Jolly-Seber model.
 #'
 #' @param par vector of parameter values
-#' @param model_data a list that contains: \enumerate{
-#' \item imat-list of vectors and matrices constructed by 
+#' @param model_data a list that contains: 
+#' \enumerate{
+#' \item \code{imat} list of vectors and matrices constructed by 
 #' \code{\link{process.ch}} from the capture history data
-#' \item Phi.dm design matrix for Phi constructed by \code{\link{create.dm}}
-#' \item p.dm design matrix for p constructed by \code{\link{create.dm}}
-#' \item pent.dm design matrix for probability of entry constructed by 
+#' \item \code{Phi.dm} design matrix for Phi constructed by \code{\link{create.dm}}
+#' \item \code{p.dm} design matrix for p constructed by \code{\link{create.dm}}
+#' \item \code{pent.dm} design matrix for probability of entry constructed by 
 #' \code{\link{create.dm}}
-#' \item N.dm design matrix for estimates of number of animals not caught from
+#' \item \code{N.dm} design matrix for estimates of number of animals not caught from
 #' super-population constructed by \code{\link{create.dm}}
-#' \item Phi.fixed matrix with 3 columns: ch number(i), occasion number(j),
+#' \item \code{Phi.fixed} matrix with 3 columns: ch number(i), occasion number(j),
 #' fixed value(f) to fix phi(i,j)=f
-#' \item p.fixed matrix with 3 columns: ch number(i), occasion number(j),
-#' \item pent.fixed matrix with 3 columns: ch number(i), occasion number(j), 
+#' \item \code{p.fixed }matrix with 3 columns: ch number(i), occasion number(j),
+#' \item \code{pent.fixed} matrix with 3 columns: ch number(i), occasion number(j), 
 #' fixed value(f) to fix pent(i,j)=f
-#' \item time.intervals intervals of time between occasions if not all 1
+#' \item \code{time.intervals} intervals of time between occasions if not all 1
 #' fixed value(f) to fix p(i,j)=f
 #' }
 #' @param debug if TRUE will printout values of \code{par} and function value
@@ -37,41 +38,57 @@
 #' for the analysis of capture-recapture experiments in open populations.
 #' Biometrics 52:860-873.
 js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
+  
+
+  # Compute parameter matrices from parameters and design matrices --------
+  # Entrance probability
   get.pent <- function(beta, dm, nocc) {
-    pents <- cbind(rep(1, nrow(dm) / (nocc - 1)), exp(matrix(
-      as.vector(dm %*% beta),
-      ncol = nocc - 1,
-      nrow = nrow(dm) / (nocc - 1),
-      byrow = TRUE
-    )))
+    pents <- cbind(
+      rep(1, nrow(dm) / (nocc - 1)), 
+      exp(matrix(
+        as.vector(dm %*% beta),
+        ncol = nocc - 1,
+        nrow = nrow(dm) / (nocc - 1),
+        byrow = TRUE))
+      )
     pents <- pents / apply(pents, 1, sum)
     return(pents)
   }
+  # Probability of detection
   get.p <- function(beta, dm, nocc) {
-    ps <- cbind(rep(1, nrow(dm) / (nocc - 1)), plogis(matrix(
-      as.vector(dm %*% beta),
-      ncol = nocc - 1,
-      nrow = nrow(dm) / (nocc - 1),
-      byrow = TRUE
-    )))
+    ps <- cbind(
+      rep(1, nrow(dm) / (nocc - 1)), 
+      plogis(matrix(
+        as.vector(dm %*% beta),
+        ncol = nocc - 1,
+        nrow = nrow(dm) / (nocc - 1),
+        byrow = TRUE))
+      )
     return(ps)
   }
-  # compute Phi matrix from parameters (beta) and list of design matrices (dm)
-  # created by function create.dm
+  # Probability of survival
   get.Phi <- function(beta, dm, nocc) {
-    Phis <- cbind(rep(1, nrow(dm) / (nocc - 1)), plogis(matrix(
-      as.vector(dm %*% beta),
-      ncol = nocc - 1,
-      nrow = nrow(dm) / (nocc - 1),
-      byrow = TRUE
-    )))
+    Phis <- cbind(
+      rep(1, nrow(dm) / (nocc - 1)), 
+      plogis(matrix(
+        as.vector(dm %*% beta),
+        ncol = nocc - 1,
+        nrow = nrow(dm) / (nocc - 1),
+        byrow = TRUE))
+      )
     return(Phis)
   }
-  if (debug)
+  
+  # Print parameters to console -------------------------------------------
+  if (debug) {
     cat("par = ", par, "\n")
+  }
+
+  # Count function evaluations --------------------------------------------
   f_eval <- get("markedfunc_eval", envir = jsenv) + 1
   assign("markedfunc_eval", f_eval, envir = jsenv)
-  # initialize constants and parameter vectors
+
+  # Iinitialize constants and parameter vectors ---------------------------
   nocc <- model_data$imat$nocc
   nphi <- ncol(model_data$Phi.dm)
   np <- ncol(model_data$p.dm)
@@ -81,7 +98,8 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
   beta.p <- par[(nphi + 1):(nphi + np)]
   beta.pent <- par[(nphi + np + 1):(nphi + np + npent)]
   beta.N <- par[(nphi + np + npent + 1):(nphi + np + npent + nN)]
-  # create Phi and p beta matrices excluding first occasion on p
+  
+  # Create Phi and p beta matrices ----------------------------------------
   Phibeta <- matrix(
     as.vector(model_data$Phi.dm %*% beta.phi),
     ncol = nocc - 1,
@@ -94,9 +112,13 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
     nrow = nrow(model_data$p.dm) / (nocc),
     byrow = TRUE
   )
-  if (is.null(model_data$time.intervals))
+  
+  # Define time intervals -------------------------------------------------
+  if (is.null(model_data$time.intervals)) {
     model_data$time.intervals <- rep(1, nocc - 1)
-  # compute CJS portion of the likelihood
+  }
+
+  # Compute CJS portion of the likelihood ---------------------------------
   cjslnl <- .Fortran(
     "cjs",
     as.double(model_data$imat$chmat),
@@ -118,15 +140,14 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
     p0 = double(nrow(model_data$imat$chmat)),
     PACKAGE = "marked"
   )
-  # next add on likelihood component for first capture
+
+  # Add on likelihood component for first capture -------------------------
+  # Probability of entrance parameter matrix
   pents <- get.pent(beta.pent, model_data$pent.dm, nocc)
+  browser()
+  # 
   pents.dummy <- pents[model_data$imat$freq == 0, ]
-  ps <- plogis(matrix(
-    as.vector(model_data$p.dm %*% beta.p),
-    ncol = nocc,
-    nrow = nrow(model_data$p.dm) / (nocc),
-    byrow = TRUE
-  ))
+  ps <- plogis(pbeta)
   ps.dummy <- ps[model_data$imat$freq == 0, ]
   Phis <- get.Phi(beta.phi, model_data$Phi.dm, nocc)
   p.occ <- ps[cbind(1:nrow(pents), model_data$imat$first)]
@@ -136,10 +157,13 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
     model_data$imat$First
   Estar <- matrix(0, ncol = nocc, nrow = nrow(ps))
   Estar[, nocc] <- entry.p[, nocc]
-  for (j in (nocc - 1):1)
+  for (j in (nocc - 1):1) {
     Estar[, j] <- Estar[, j + 1] * entry.p[, j]
+  }
   entry.p <- rowSums(Estar * pents * (1 - model_data$imat$Fplus)) * p.occ
   lnl <- cjslnl$lnl - sum(model_data$imat$freq * log(entry.p))
+
+  # Add on likelihood component for those not caught ----------------------
   # next add on likelihood component for those not caught from dummy 1000000,
   # 0100000,...data return complete likelihood value except that calling
   # function js adds the ui factorials to match POPAN output from MARK
@@ -154,6 +178,8 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
               * (1 - diag(ps))))
     lnl <- lnl - lfactorial(nobstot[i] + Ns[i]) + lfactorial(Ns[i])
   }
+
+  # Print progress to console ---------------------------------------------
   if (debug) {
     cat("-2lnl = ", 2 * lnl, "\n")
   } else {
@@ -165,5 +191,6 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
       flush.console()
     }
   }
+  
   return(lnl)
 }
