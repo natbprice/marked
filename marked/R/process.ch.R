@@ -29,21 +29,31 @@
 #' @export
 #' @author Jeff Laake
 process.ch <- function(ch, freq = NULL, all = FALSE) {
-  #  is ch comma separated? If not, separate by commas
-  if (length(grep(",", ch[1])) == 0)
+
+  # Separate capture histories with commas --------------------------------
+  if (length(grep(",", ch[1])) == 0) {
     ch <- sapply(strsplit(ch, ""), paste, collapse = ",")
+  }
   ch.lengths <- sapply(strsplit(ch, ","), length)
+  
+  # Check capture histories are same size ---------------------------------
   nocc <- ch.lengths[1]
-  if (any(ch.lengths != nocc))
+  if (any(ch.lengths != nocc)) {
     stop(
       "\nCapture history length is not constant. 
       \nch must be a character string with constant length or comma 
       separated with constant number of elements \n"
     )
+  }
+
+  # Define frequency ------------------------------------------------------
   nch <- length(ch)
-  if (is.null(freq))
+  if (is.null(freq)) {
     freq <- rep(1, nch)
-  # in case multistate data are passed change all non-zero to 1
+  }
+  
+
+  # In case multistate data are passed, change all non-zero to 1 ----------
   chmat <- matrix((unlist(strsplit(ch, ","))),
                  byrow = TRUE,
                  ncol = nocc,
