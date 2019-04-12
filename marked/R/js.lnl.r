@@ -38,7 +38,6 @@
 #' for the analysis of capture-recapture experiments in open populations.
 #' Biometrics 52:860-873.
 js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
-  
 
   # Compute parameter matrices from parameters and design matrices --------
   # Entrance probability
@@ -143,21 +142,15 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
 
   # Add on likelihood component for first capture -------------------------
   # Probability of entrance parameter matrix
-  pents <- get.pent(beta.pent, model_data$pent.dm, nocc)
-  pents.dummy <- pents[model_data$imat$freq == 0, ]
-  
-  # Probability of purchase parameter matrix
-  ps <- plogis(pbeta)
-  ps.dummy <- ps[model_data$imat$freq == 0, ]
-  ps[, nocc] <- 0
-  p.occ <- ps[cbind(1:nrow(pents), model_data$imat$first)]
-  
-  # Probability of survival prameter matrix
-  Phis <- get.Phi(beta.phi, model_data$Phi.dm, nocc)
-  Phis <- cbind(Phis[, 2:nocc], rep(1, nrow(Phis)))
-  
-  entry.p <- (1 - ps) * Phis * (1 - model_data$imat$First) +
-    model_data$imat$First
+  pents=get.pent(beta.pent,model_data$pent.dm,nocc)
+  pents.dummy=pents[model_data$imat$freq==0,]
+  ps=plogis(matrix(as.vector(model_data$p.dm%*%beta.p),ncol=nocc,nrow=nrow(model_data$p.dm)/(nocc),byrow=TRUE))
+  ps.dummy=ps[model_data$imat$freq==0,]
+  Phis=get.Phi(beta.phi,model_data$Phi.dm,nocc)
+  p.occ=ps[cbind(1:nrow(pents),model_data$imat$first)]
+  ps[,nocc]=0
+  Phis=cbind(Phis[,2:nocc],rep(1,nrow(Phis)))
+  entry.p=(1-ps)*Phis*(1-model_data$imat$First)+model_data$imat$First
   
   Estar <- matrix(0, ncol = nocc, nrow = nrow(ps))
   Estar[, nocc] <- entry.p[, nocc]
