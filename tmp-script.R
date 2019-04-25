@@ -13,10 +13,10 @@ entranceProb <- function(N, Ns, nocc) {
   (Ns - N) / (nocc * Ns)
 }
 
-N <- 10e3
-phi <- 0.5
-p <- 0.5
-nocc <- 20
+N <- 1e3
+phi <- 0.7
+p <- 0.2
+nocc <-10
 Ns <- superPopSize(N, nocc, phi) 
 pent <- entranceProb(N, Ns, nocc)
 pBirth <- 1
@@ -37,11 +37,15 @@ captureData <- CH %>%
   group_by(ch) %>% 
   summarize(freq = n()) 
 
-p.ch <- process.ch(captureData %>% pull(ch), captureData %>% pull(freq))
+p.ch <- process.ch(captureData %>% pull(ch), captureData %>% pull(freq), all = T)
 
 proc = process.data(captureData %>% as.data.frame(), model = "js", begin.time = 1)
 ddl = make.design.data(proc)
-mod = crm(proc, ddl, hessian = TRUE)
+# initial <- list(Phi = c(`(Intercept)` = 2.17221527553774), p = c(`(Intercept)` = -2.15371289211996),
+#      pent = c(`(Intercept)` = -2.31309999137221), N = c(`(Intercept)` = 8.94595618338772))
+initial <- list(Phi = c(`(Intercept)` = log(phi)), p = c(`(Intercept)` = log(p)),
+                pent = c(`(Intercept)` = log(pent)), N = c(`(Intercept)` = log(Ns - sum(captureData$freq))))
+mod = crm(proc, ddl, hessian = TRUE, initial = initial)
 
 # Calculate model predictions of retention and purchase probabilities
 modPred <-
@@ -55,5 +59,9 @@ B <- Ns * pent
 B.pred <- Ns.pred * pent.pred
 (B.pred - B) / B
 
-Ns.pred/Ns
-pent.pred/pent
+(Ns.pred - Ns) / Ns
+(pent.pred - pent) / pent
+
+e <- c((B.pred - B) / B,
+       (Ns.pred - Ns) / Ns,
+       (pent.pred - pent) / pent)

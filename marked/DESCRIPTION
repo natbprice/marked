@@ -32,10 +32,13 @@ Imports:
     TMB,
     optimx (>= 2013.8.6)
 Suggests:
-    ggplot2
+    ggplot2,
+    knitr,
+    rmarkdown
 LinkingTo: Rcpp
 SystemRequirements: ADMB version 11 <http://admb-project.org/> for
     use.admb=TRUE; see readme.txt
 LazyLoad: yes
 License: GPL (>=2)
 RoxygenNote: 6.1.1
+VignetteBuilder: knitr

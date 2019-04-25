@@ -142,48 +142,162 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
 
   # Add on likelihood component for first capture -------------------------
   # Probability of entrance parameter matrix
-  pents=get.pent(beta.pent,model_data$pent.dm,nocc)
-  pents.dummy=pents[model_data$imat$freq==0,]
-  ps=plogis(matrix(as.vector(model_data$p.dm%*%beta.p),ncol=nocc,nrow=nrow(model_data$p.dm)/(nocc),byrow=TRUE))
-  ps.dummy=ps[model_data$imat$freq==0,]
-  Phis=get.Phi(beta.phi,model_data$Phi.dm,nocc)
-  p.occ=ps[cbind(1:nrow(pents),model_data$imat$first)]
-  ps[,nocc]=0
-  Phis=cbind(Phis[,2:nocc],rep(1,nrow(Phis)))
-  entry.p=(1-ps)*Phis*(1-model_data$imat$First)+model_data$imat$First
+  pents <- get.pent(beta.pent, model_data$pent.dm, nocc)
+  pents.dummy <- pents[model_data$imat$freq == 0, ]
+  ps <- plogis(matrix(
+    as.vector(model_data$p.dm %*% beta.p),
+    ncol = nocc,
+    nrow = nrow(model_data$p.dm) / (nocc),
+    byrow = TRUE
+  ))
+  ps.dummy <- ps[model_data$imat$freq == 0, ]
+  Phis <- get.Phi(beta.phi, model_data$Phi.dm, nocc)
+  p.occ <- ps[cbind(1:nrow(pents), model_data$imat$first)]
+  ps[, nocc] <- 0
+  Phis <- cbind(Phis[, 2:nocc], rep(1, nrow(Phis)))
   
-  Estar <- matrix(0, ncol = nocc, nrow = nrow(ps))
-  Estar[, nocc] <- entry.p[, nocc]
-  for (j in (nocc - 1):1) {
-    Estar[, j] <- Estar[, j + 1] * entry.p[, j]
-  }
-  entry.p <- rowSums(Estar * pents * (1 - model_data$imat$Fplus)) * p.occ
+  Phis.dummy <- Phis[model_data$imat$freq == 0, ]
   
-  # Update likelihood
-  lnl <- cjslnl$lnl - sum(model_data$imat$freq * log(entry.p))
+  # NBP edits
+  detectAllBirths = T
+  if (detectAllBirths) {
+    
+    # browser()
+    # Start with CJS likelihood
+    lnl <- cjslnl$lnl
+    
+    
+    # Number of capture occasions
+    k <- nocc
+    
+    # Probability of detection
+    p.time <- diag(plogis(matrix(
+      as.vector(model_data$p.dm %*% beta.p),
+      ncol = nocc,
+      nrow = nrow(model_data$p.dm) / (nocc),
+      byrow = TRUE
+    )))
+    # p.time[nocc] <- 1
+    phi.time <- diag(Phis)
+    
+    # Entrance probabilities
+    beta <- diag(pents)
+    
+    # browser()
+    
+    # Probability of surviving undetected
+    psi <- numeric(k)
+    psi[1] <- beta[1]
+    # psi[2] <- beta[2] + beta[1] * (1 - p.time[1]) * phi.time[1]
+    # psi[3] <- beta[3] + beta[1] * (1 - p.time[1]) * phi.time[1] * (1 - p.time[2]) * phi.time[2]
+    
+    # This is by time. Should be by capture history?
+    for(i in 1:(k - 1)) {
+      psi[i+1] <- beta[i+1] + beta[1] * prod((1 - p.time[1:i]) * phi.time[1:i])
+      # psi[i + 1] <- psi[i] * (1 - p.time[i]) * phi.time[i] + beta[i + 1]
+    }
+    
+    first <- model_data$imat$first
+    firstMat <- t(sapply(first, function(x, nocc) {
+      return(c(rep(0, x[1] - 1), 1, rep(0, nocc - x[1])))
+    }, nocc = nocc))
+    u <- colSums(model_data$imat$freq * firstMat)
+    udot = sum(u)
+    
+    # Super population size
+    # Do we add freq??
+    Ns <- exp(as.vector(model_data$N.dm %*% beta.N)) + udot
+    
+    # TODO Use gamma function. Calculate number unmarked captured.
+    lmultinomial <- function (x) {
+      lfactorial(sum(x)) - sum(lfactorial(x))
+    }
+    
+    lnl1a <- lchoose(Ns, udot) + udot * log(sum(psi * p.time)) +
+      (Ns - udot) * log(1 - sum(psi * p.time))
+    
+    lnl1b <- lmultinomial(u) + 
+      sum(u * log((psi * p.time)/sum(psi * p.time)))
+    
+    if(f_eval %% 100 == 0 | f_eval == 1){browser()}
 
-  # Add on likelihood component for those not caught ----------------------
-  # next add on likelihood component for those not caught from dummy 1000000,
-  # 0100000,...data return complete likelihood value except that calling
-  # function js adds the ui factorials to match POPAN output from MARK
-  
-  # Super-population size
-  Ns <- exp(as.vector(model_data$N.dm %*% beta.N))
-  
-  # Loop over groups
-  for (i in 1:length(Ns)) {
-    index0 <- (i - 1) * nocc + 1
-    index1 <- i * nocc
-    ps <- ps.dummy[index0:index1, ]
-    pents <- pents.dummy[index0:index1, ]
+    # browser()
+    lnl <- lnl - (lnl1a + lnl1b) + lfactorial(Ns)
+    
+    # browser() 
+    # first <- model_data$imat$first
+    # Estar <- matrix(
+    #   0,
+    #   ncol = ncol(model_data$imat$First),
+    #   nrow = nrow(model_data$imat$First)
+    # )
+    # Estar <- t(sapply(first, function(x, nocc) {
+    #   return(c(rep(0, x[1] - 1), 1, rep(0, nocc - x[1])))
+    # }, nocc = nocc))
+    # 
+    # # entry.p = (1 - ps) * Phis * (1 - model_data$imat$First) + model_data$imat$First
+    # # # entry.p = (1 - ps) * Phis * (1 - specialFirst) + model_data$imat$First
+    # #
+    # # Estar <- matrix(0, ncol = nocc, nrow = nrow(ps))
+    # # Estar[, nocc] <- entry.p[, nocc]
+    # # for (j in (nocc - 1):1) {
+    # #   Estar[, j] <- Estar[, j + 1] * entry.p[, j]
+    # # }
+    # entry.p <-
+    #   rowSums(Estar * pents * (1 - model_data$imat$Fplus)) * p.occ
+    # 
+    # # Update likelihood
+    # Ns <- exp(as.vector(model_data$N.dm %*% beta.N))
+    # 
+    # # Loop over groups
+    # for (i in 1:length(Ns)) {
+    #   lnl <- cjslnl$lnl - Ns[i]*sum(model_data$imat$freq * log(entry.p))
+    #   # lnl <- lnl - lfactorial(nobstot[i] + Ns[i]) + lfactorial(Ns[i])
+    # }
+    
+    
+  } else {
+    
+    entry.p = (1 - ps) * Phis * (1 - model_data$imat$First) + model_data$imat$First
+    
+    Estar <- matrix(0, ncol = nocc, nrow = nrow(ps))
+    Estar[, nocc] <- entry.p[, nocc]
+    for (j in (nocc - 1):1) {
+      Estar[, j] <- Estar[, j + 1] * entry.p[, j]
+    }
+    entry.p <-
+      rowSums(Estar * pents * (1 - model_data$imat$Fplus)) * p.occ
     
     # Update likelihood
-    lnl <- lnl - Ns[i] *
-      log(sum(diag(pents) * cjslnl$p0[model_data$imat$freq == 0][index0:index1]
-              * (1 - diag(ps))))
+    lnl <- cjslnl$lnl - sum(model_data$imat$freq * log(entry.p))
     
-    # Update likelihood
-    lnl <- lnl - lfactorial(nobstot[i] + Ns[i]) + lfactorial(Ns[i])
+    # Add on likelihood component for those not caught ----------------------
+    # next add on likelihood component for those not caught from dummy 1000000,
+    # 0100000,...data return complete likelihood value except that calling
+    # function js adds the ui factorials to match POPAN output from MARK
+    
+    # Super-population size
+    Ns <- exp(as.vector(model_data$N.dm %*% beta.N))
+    
+    # Loop over groups
+    for (i in 1:length(Ns)) {
+      index0 <- (i - 1) * nocc + 1
+      index1 <- i * nocc
+      ps <- ps.dummy[index0:index1,]
+      pents <- pents.dummy[index0:index1,]
+      # phis <- Phis.dummy[index0:index1, ]
+      
+      # Update likelihood
+      lnl <- lnl - Ns[i] *
+        log(sum(diag(pents) * cjslnl$p0[model_data$imat$freq == 0][index0:index1]
+                * (1 - diag(ps))))
+      
+      # Update likelihood
+      lnl <- lnl - lfactorial(nobstot[i] + Ns[i]) + lfactorial(Ns[i])
+    }
+    
+    # browser()
+    if(f_eval == 100){browser()}
   }
 
   # Print progress to console ---------------------------------------------

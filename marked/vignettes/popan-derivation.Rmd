@@ -1,0 +1,59 @@
+---
+title: "POPAN Derivation"
+author: "Nathaniel Price"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{POPAN Derivation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+The net births $B_1, \dots, B_{k-1}$ follow a multinomial distribution with super-population size
+$N_s$ and entrance probabilities $\beta_1, \dots, \beta_{k-1}$.
+
+$$\{B_1, \dots, B_{k-1}\} \sim  \text{Multinomial}(N_s; \beta_1, \dots, \beta_{k-1})$$
+The number of individuals alive just prior to the first sample time is 
+
+$$B_0 = N_s - \sum_{i=1}^{k-1}{B_i}$$
+
+Number of captured unmarked individuals $u_i$ follows a multinomial distribution 
+
+$$\{u_1, \dots, u_k\} \sim  \text{Multinomial}(N_s; \Psi_1 p_1, \dots, \Psi_k p_k)$$
+
+where $\Psi_i$ is the probability that an individual enterss the population, is still
+alive, and is not seen before time $i$.
+
+$$\Psi_1 = \beta_0, \Psi_{i+1} = \Psi_i (1 - p_i) \phi_i + \beta_i$$
+
+The probability mass function for the multinomial distribtuion is
+$$f(x_1, \dots, x_k) = \frac{n!}{x_1! \cdots x_k!} p_1^{x_1}\cdots p_k^{x_k}$$
+$$f(x_1, \dots, x_k) = \binom{n}{x_1, \dots, x_k} \prod_{i=1}^{k}{p_i^{x_k}}$$
+
+
+Therefore, the likelihood for the probability of first capture is
+$$\mathcal{L}(u_1, \dots, u_k) = \binom{N_s}{u_1, \dots, u_k} \left(1 - \sum_{i=1}^{k}{\Psi_i p _i}\right)^{N_s-u_\cdot} \prod_{i=1}^{k}{\left(\Psi_i p_i\right)^{u_i}}$$
+By conditioning on the total number of unmarked individuals observed $u_\cdot$ the likelihood can be factored as 
+
+$$\mathcal{L}_1 = \mathcal{L}_{1a} \times \mathcal{L}_{1b} = \binom{N_s}{u_\cdot} \left(\sum_{i=1}^{k}{\Psi_i p _i}\right)^{u_\cdot} \left(1 - \sum_{i=1}^{k}{\Psi_i p _i}\right)^{N_s-u_\cdot} \times \binom{u_\cdot}{u_1, \dots, u_k} \prod_{i=1}^{k}{\left(\frac{\Psi_i p_i}{\sum{\Psi_i p_i}}\right)^{u_i}}$$
+
+$$\ln \mathcal{L}_{1a} = \ln \binom{N_s}{u_\cdot} + u_\cdot \ln \left(\sum_{i=1}^{k}{\Psi_i p _i}\right) + (N_s-u_\cdot)\ln\left(1 - \sum_{i=1}^{k}{\Psi_i p _i}\right)$$
+$$\mathcal{L}_{1b} = \frac{\Gamma\left(\sum{u_i + 1}\right)}{\prod{\Gamma(u_i + 1)}} \prod_{i=1}^{k}{\left(\frac{\Psi_i p_i}{\sum{\Psi_i p_i}}\right)^{u_i}}$$
+
+$$\ln \mathcal{L}_{1b} =   \ln \Gamma\left(\sum{u_i + 1}\right) - \sum{\ln \Gamma(u_i + 1)} + \sum_{i=1}^{k}{u_i \ln \left(\frac{\Psi_i p_i}{\sum{\Psi_i p_i}}\right)}$$
+
+$$\ln \mathcal{L}_{1b} =   \ln \Gamma\left(\sum{u_i + 1}\right) - \sum{\ln \Gamma(u_i + 1)} + \sum_{i=1}^{k}{u_i \left( \ln \left(\Psi_i p_i\right) - \ln \left(\sum{\Psi_i p_i}\right)\right)}$$
+
+If all new individuals are detected, then an individual must have either just
+entered or was in the population at the start of the study. Therefore,
+
+$$\Psi_1 = \beta_0, \Psi_{i+1} = \beta_i + \beta_0\prod_{j=1}^{i}{(1 - p_j) \phi_j}$$
+
+
