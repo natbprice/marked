@@ -186,14 +186,15 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
     # browser()
     
     # Probability of surviving undetected
-    psi <- numeric(k)
-    psi[1] <- beta[1]
+    psi.p <- numeric(k)
+    psi.p[1] <- beta[1] * p.time[1]
     # psi[2] <- beta[2] + beta[1] * (1 - p.time[1]) * phi.time[1]
     # psi[3] <- beta[3] + beta[1] * (1 - p.time[1]) * phi.time[1] * (1 - p.time[2]) * phi.time[2]
     
     # This is by time. Should be by capture history?
     for(i in 1:(k - 1)) {
-      psi[i+1] <- beta[i+1] + beta[1] * prod((1 - p.time[1:i]) * phi.time[1:i])
+      psi.p[i + 1] <-
+        beta[i + 1] + p.time[i + 1] * beta[1] * prod((1 - p.time[1:i]) * phi.time[1:i])
       # psi[i + 1] <- psi[i] * (1 - p.time[i]) * phi.time[i] + beta[i + 1]
     }
     
@@ -213,16 +214,20 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
       lfactorial(sum(x)) - sum(lfactorial(x))
     }
     
-    lnl1a <- lchoose(Ns, udot) + udot * log(sum(psi * p.time)) +
-      (Ns - udot) * log(1 - sum(psi * p.time))
+    lnl1a <- lchoose(Ns, udot) + udot * log(sum(psi.p)) +
+      (Ns - udot) * log(1 - sum(psi.p))
     
     lnl1b <- lmultinomial(u) + 
-      sum(u * log((psi * p.time)/sum(psi * p.time)))
+      sum(u * log((psi.p)/sum(psi.p)))
     
-    if(f_eval %% 100 == 0 | f_eval == 1){browser()}
-
+    # if(f_eval %% 100 == 0 | f_eval == 1){browser()}
+    
+    lnl <- lnl - (lnl1a + lnl1b)
+    
     # browser()
-    lnl <- lnl - (lnl1a + lnl1b) + lfactorial(Ns)
+    if(Ns >= 10*udot) {
+      lnl <- lnl + 1e6
+    }
     
     # browser() 
     # first <- model_data$imat$first

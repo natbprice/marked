@@ -16,6 +16,7 @@ knitr::opts_chunk$set(
 )
 ```
 
+## POPAN Model
 The net births $B_1, \dots, B_{k-1}$ follow a multinomial distribution with super-population size
 $N_s$ and entrance probabilities $\beta_1, \dots, \beta_{k-1}$.
 
@@ -28,7 +29,7 @@ Number of captured unmarked individuals $u_i$ follows a multinomial distribution
 
 $$\{u_1, \dots, u_k\} \sim  \text{Multinomial}(N_s; \Psi_1 p_1, \dots, \Psi_k p_k)$$
 
-where $\Psi_i$ is the probability that an individual enterss the population, is still
+where $\Psi_i$ is the probability that an individual enters the population, is still
 alive, and is not seen before time $i$.
 
 $$\Psi_1 = \beta_0, \Psi_{i+1} = \Psi_i (1 - p_i) \phi_i + \beta_i$$
@@ -44,16 +45,50 @@ By conditioning on the total number of unmarked individuals observed $u_\cdot$ t
 
 $$\mathcal{L}_1 = \mathcal{L}_{1a} \times \mathcal{L}_{1b} = \binom{N_s}{u_\cdot} \left(\sum_{i=1}^{k}{\Psi_i p _i}\right)^{u_\cdot} \left(1 - \sum_{i=1}^{k}{\Psi_i p _i}\right)^{N_s-u_\cdot} \times \binom{u_\cdot}{u_1, \dots, u_k} \prod_{i=1}^{k}{\left(\frac{\Psi_i p_i}{\sum{\Psi_i p_i}}\right)^{u_i}}$$
 
-$$\ln \mathcal{L}_{1a} = \ln \binom{N_s}{u_\cdot} + u_\cdot \ln \left(\sum_{i=1}^{k}{\Psi_i p _i}\right) + (N_s-u_\cdot)\ln\left(1 - \sum_{i=1}^{k}{\Psi_i p _i}\right)$$
+The log-likelihood for the first component is
+
+$$\ln \mathcal{L}_{1a} = \ln \binom{N_s}{u_\cdot} + u_\cdot \ln \left(\sum_{i=1}^{k}{\Psi_i p_i}\right) + (N_s-u_\cdot)\ln\left(1 - \sum_{i=1}^{k}{\Psi_i p _i}\right)$$
+
+Substituting gamma functions for the multinomial coefficient, the second component is
+
 $$\mathcal{L}_{1b} = \frac{\Gamma\left(\sum{u_i + 1}\right)}{\prod{\Gamma(u_i + 1)}} \prod_{i=1}^{k}{\left(\frac{\Psi_i p_i}{\sum{\Psi_i p_i}}\right)^{u_i}}$$
+The log-likelihood for the second component is
 
 $$\ln \mathcal{L}_{1b} =   \ln \Gamma\left(\sum{u_i + 1}\right) - \sum{\ln \Gamma(u_i + 1)} + \sum_{i=1}^{k}{u_i \ln \left(\frac{\Psi_i p_i}{\sum{\Psi_i p_i}}\right)}$$
 
-$$\ln \mathcal{L}_{1b} =   \ln \Gamma\left(\sum{u_i + 1}\right) - \sum{\ln \Gamma(u_i + 1)} + \sum_{i=1}^{k}{u_i \left( \ln \left(\Psi_i p_i\right) - \ln \left(\sum{\Psi_i p_i}\right)\right)}$$
 
+## Modified POPAN
 If all new individuals are detected, then an individual must have either just
-entered or was in the population at the start of the study. Therefore,
+entered or was in the population at the start of the study and has remained undetected. 
+Therefore,
 
 $$\Psi_1 = \beta_0, \Psi_{i+1} = \beta_i + \beta_0\prod_{j=1}^{i}{(1 - p_j) \phi_j}$$
 
+Next, we calculate the probability that a previously unseen individual is detected
+for the first time. We adjust for the fact that all new individuals are detected.
+We define a new variable $\theta$
 
+$$\theta_1 = \beta_0 p_1, \theta_{i+1} = \beta_i + \beta_0 p_{i+1} \prod_{j=1}^{i}{(1 - p_j) \phi_j}$$
+to be substituted for the product $\Psi_i p_i$ in the original likelihood function.
+
+The first component of the log-likelihood function is 
+
+$$\ln \mathcal{L}_{1a} = \ln \binom{N_s}{u_\cdot} + u_\cdot \ln \left(\sum_{i=1}^{k}{\theta_i}\right) + (N_s-u_\cdot)\ln\left(1 - \sum_{i=1}^{k}{\theta _i}\right)$$
+
+which can be evaluated in R as
+
+```{r, eval = FALSE}
+lnl1a  = lchoose(Ns, udot) + udot * log(sum(theta)) +
+  (Ns - udot) * log(1 - sum(theta))
+```
+
+The second component of the log-likelihood function is
+
+$$\ln \mathcal{L}_{1b} =   \ln \Gamma\left(\sum{u_i + 1}\right) - \sum{\ln \Gamma(u_i + 1)} + \sum_{i=1}^{k}{u_i \ln \left(\frac{\theta_i}{\sum{\theta_i}}\right)}$$
+
+which can be evaluated in R as
+
+```{r, eval = FALSE}
+lnl1b  = lfactorial(sum(u)) - sum(lfactorial(u)) +
+  sum(u * log((theta) / sum(theta)))
+```
