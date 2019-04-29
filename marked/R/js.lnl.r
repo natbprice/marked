@@ -225,9 +225,6 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
     lnl <- lnl - (lnl1a + lnl1b)
     
     # browser()
-    if(Ns >= 10*udot) {
-      lnl <- lnl + 1e6
-    }
     
     # browser() 
     # first <- model_data$imat$first

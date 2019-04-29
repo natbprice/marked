@@ -20,10 +20,10 @@ entranceProb <- function(N, Ns, nocc) {
 
 # Simulate data -----------------------------------------------------------
 
-N.true <- 2000
-phi.true <- 0.5
-p.true <- 0.2
-nocc <- 10
+N.true <- 400e3
+phi.true <- 0.85
+p.true <- 0.70
+nocc <- 8
 Ns.true <- superPopSize(N.true, nocc, phi.true) 
 pent.true <- entranceProb(N.true, Ns.true, nocc)
 pBirth <- 1
@@ -137,7 +137,8 @@ initial.cjs <- list(Phi = c(`(Intercept)` = mod.cjs$results$beta$Phi),
                      pent = c(`(Intercept)` = log(mean(u/udot))),
                      N = c(`(Intercept)` = log(udot)))
 initial.rand <- lapply(initial.true, function(x) x*runif(1, 0.8, 1.2))
-mod = crm(proc, ddl, hessian = TRUE, initial = initial.cjs)
+mod = crm(proc, ddl, hessian = TRUE, 
+          initial = initial.cjs)
 
 
 

@@ -68,7 +68,7 @@ Next, we calculate the probability that a previously unseen individual is detect
 for the first time. We adjust for the fact that all new individuals are detected.
 We define a new variable $\theta$
 
-$$\theta_1 = \beta_0 p_1, \theta_{i+1} = \beta_i + \beta_0 p_{i+1} \prod_{j=1}^{i}{(1 - p_j) \phi_j}$$
+$$\theta_1 \approx \beta_0 p_1, \theta_{i+1} = \beta_i + \beta_0 p_{i+1} \prod_{j=1}^{i}{(1 - p_j) \phi_j}$$
 to be substituted for the product $\Psi_i p_i$ in the original likelihood function.
 
 The first component of the log-likelihood function is 
