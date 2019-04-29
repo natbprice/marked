@@ -158,107 +158,69 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
   
   Phis.dummy <- Phis[model_data$imat$freq == 0, ]
   
-  # NBP edits
-  detectAllBirths = T
+
+  # Switch likelihood functions -------------------------------------------
+  detectAllBirths <- T
   if (detectAllBirths) {
     
-    # browser()
-    # Start with CJS likelihood
-    lnl <- cjslnl$lnl
-    
-    
+    # Warning about experimental state of code
+    warning("Running experimental likelihood function")
+
     # Number of capture occasions
     k <- nocc
     
-    # Probability of detection
+    # Probability of detection (k x 1 vector)
     p.time <- diag(plogis(matrix(
       as.vector(model_data$p.dm %*% beta.p),
       ncol = nocc,
       nrow = nrow(model_data$p.dm) / (nocc),
       byrow = TRUE
     )))
-    # p.time[nocc] <- 1
+    
+    # Pobability of survival (k x 1 vector)
     phi.time <- diag(Phis)
     
-    # Entrance probabilities
+    # Entrance probabilities  (k x 1 vector)
     beta <- diag(pents)
     
-    # browser()
-    
-    # Probability of surviving undetected
-    psi.p <- numeric(k)
-    psi.p[1] <- beta[1] * p.time[1]
-    # psi[2] <- beta[2] + beta[1] * (1 - p.time[1]) * phi.time[1]
-    # psi[3] <- beta[3] + beta[1] * (1 - p.time[1]) * phi.time[1] * (1 - p.time[2]) * phi.time[2]
-    
-    # This is by time. Should be by capture history?
+    # Probability of surviving undetected (k x 1 vector)
+    theta <- numeric(k)
+    theta[1] <- beta[1] * p.time[1]
     for(i in 1:(k - 1)) {
-      psi.p[i + 1] <-
-        beta[i + 1] + p.time[i + 1] * beta[1] * prod((1 - p.time[1:i]) * phi.time[1:i])
-      # psi[i + 1] <- psi[i] * (1 - p.time[i]) * phi.time[i] + beta[i + 1]
+      theta[i + 1] <-
+        beta[i + 1] + 
+        p.time[i + 1] * beta[1] * prod((1 - p.time[1:i]) * phi.time[1:i])
     }
     
+    # Matrix with 1 for first capture and 0 otherwise
     first <- model_data$imat$first
     firstMat <- t(sapply(first, function(x, nocc) {
       return(c(rep(0, x[1] - 1), 1, rep(0, nocc - x[1])))
     }, nocc = nocc))
+    
+    # Number of unmarked individuals captured on each occassion
     u <- colSums(model_data$imat$freq * firstMat)
-    udot = sum(u)
+    
+    # Total number of captured individuals
+    udot <- sum(u)
     
     # Super population size
-    # Do we add freq??
     Ns <- exp(as.vector(model_data$N.dm %*% beta.N)) + udot
     
-    # TODO Use gamma function. Calculate number unmarked captured.
-    lmultinomial <- function (x) {
-      lfactorial(sum(x)) - sum(lfactorial(x))
-    }
+    # First component of likelihood function
+    lnl1a <- lchoose(Ns, udot) + udot * log(sum(theta)) +
+      (Ns - udot) * log(1 - sum(theta))
     
-    lnl1a <- lchoose(Ns, udot) + udot * log(sum(psi.p)) +
-      (Ns - udot) * log(1 - sum(psi.p))
+    # Second component of likelihood function
+    lnl1b <- lfactorial(sum(u)) - sum(lfactorial(u)) + 
+      sum(u * log((theta)/sum(theta)))
     
-    lnl1b <- lmultinomial(u) + 
-      sum(u * log((psi.p)/sum(psi.p)))
-    
-    # if(f_eval %% 100 == 0 | f_eval == 1){browser()}
-    
-    lnl <- lnl - (lnl1a + lnl1b)
-    
-    # browser()
-    
-    # browser() 
-    # first <- model_data$imat$first
-    # Estar <- matrix(
-    #   0,
-    #   ncol = ncol(model_data$imat$First),
-    #   nrow = nrow(model_data$imat$First)
-    # )
-    # Estar <- t(sapply(first, function(x, nocc) {
-    #   return(c(rep(0, x[1] - 1), 1, rep(0, nocc - x[1])))
-    # }, nocc = nocc))
-    # 
-    # # entry.p = (1 - ps) * Phis * (1 - model_data$imat$First) + model_data$imat$First
-    # # # entry.p = (1 - ps) * Phis * (1 - specialFirst) + model_data$imat$First
-    # #
-    # # Estar <- matrix(0, ncol = nocc, nrow = nrow(ps))
-    # # Estar[, nocc] <- entry.p[, nocc]
-    # # for (j in (nocc - 1):1) {
-    # #   Estar[, j] <- Estar[, j + 1] * entry.p[, j]
-    # # }
-    # entry.p <-
-    #   rowSums(Estar * pents * (1 - model_data$imat$Fplus)) * p.occ
-    # 
-    # # Update likelihood
-    # Ns <- exp(as.vector(model_data$N.dm %*% beta.N))
-    # 
-    # # Loop over groups
-    # for (i in 1:length(Ns)) {
-    #   lnl <- cjslnl$lnl - Ns[i]*sum(model_data$imat$freq * log(entry.p))
-    #   # lnl <- lnl - lfactorial(nobstot[i] + Ns[i]) + lfactorial(Ns[i])
-    # }
-    
+    # Total negative log-likelihood function
+    lnl <- cjslnl$lnl - (lnl1a + lnl1b)
     
   } else {
+    
+    # Original likilihood function
     
     entry.p = (1 - ps) * Phis * (1 - model_data$imat$First) + model_data$imat$First
     
@@ -287,7 +249,6 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
       index1 <- i * nocc
       ps <- ps.dummy[index0:index1,]
       pents <- pents.dummy[index0:index1,]
-      # phis <- Phis.dummy[index0:index1, ]
       
       # Update likelihood
       lnl <- lnl - Ns[i] *
@@ -298,8 +259,6 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
       lnl <- lnl - lfactorial(nobstot[i] + Ns[i]) + lfactorial(Ns[i])
     }
     
-    # browser()
-    if(f_eval == 100){browser()}
   }
 
   # Print progress to console ---------------------------------------------
