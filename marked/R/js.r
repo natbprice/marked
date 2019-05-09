@@ -151,12 +151,12 @@ js = function(x,
         par,
         js.lnl,
         model_data = model_data,
-        # Phi.links = NULL,
-        # p.links = NULL,
-        method = "SANN",
-        hessian = FALSE,
+        # method = method,
+        # hessian = hessian,
         debug = debug,
         control = control,
+        # itnmax = itnmax,
+        nobstot = nobstot,
         jsenv = jsenv,
         ...
       )
@@ -170,12 +170,12 @@ js = function(x,
         par,
         js.lnl,
         model_data = model_data,
-        # Phi.links = NULL,
-        # p.links = NULL,
-        # method = "SANN",
-        # hessian = FALSE,
+        # method = method,
+        # hessian = hessian,
         debug = debug,
         control = control,
+        # itnmax = itnmax,
+        nobstot = nobstot,
         jsenv = jsenv,
         ...
       )
@@ -248,7 +248,7 @@ js = function(x,
     if (hessian)
     {
       cat("Computing hessian\n")
-      res$beta.vcv = js.hessian(res)
+      res$beta.vcv = js.hessian(res, ...)
     }
     #  Restore complete non-accumulated model_data with unscaled design matrices
     if (!is.null(model_data.save))

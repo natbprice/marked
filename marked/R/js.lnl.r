@@ -37,8 +37,8 @@
 #' @references Schwarz, C. J., and A. N. Arnason. 1996. A general methodology
 #' for the analysis of capture-recapture experiments in open populations.
 #' Biometrics 52:860-873.
-js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
-
+js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv, detectAllBirths = FALSE) {
+  
   # Compute parameter matrices from parameters and design matrices --------
   # Entrance probability
   get.pent <- function(beta, dm, nocc) {
@@ -160,13 +160,15 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
   
 
   # Switch likelihood functions -------------------------------------------
-  detectAllBirths <- T
+  # detectAllBirths <- T
   if (detectAllBirths) {
     
     # browser()
     
     # Warning about experimental state of code
-    warning("Running experimental likelihood function")
+    if (f_eval == 1) {
+      message("Running experimental likelihood function")
+    }
     
     # Total number of captured individuals
     if (nrow(model_data$N.dm) == 1) {

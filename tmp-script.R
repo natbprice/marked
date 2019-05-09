@@ -176,9 +176,12 @@ mod = crm(proc,
                                   p = list(formula = ~ groupID),
                                   pent = list(formula = ~ groupID),
                                   N = list(formula = ~ groupID)),
-          # initial = initial.cjs,
+          initial = initial.cjs,
           method = "CMAES",
-          hessian = TRUE)
+          detectAllBirths = T,
+          hessian = TRUE
+          # control = list(maxit = 1e3)
+          )
 
 
 
