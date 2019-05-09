@@ -92,3 +92,197 @@ which can be evaluated in R as
 lnl1b  = lfactorial(sum(u)) - sum(lfactorial(u)) +
   sum(u * log((theta) / sum(theta)))
 ```
+
+## Testing likelihood function
+
+```{r setupSimulation}
+
+# Load package for simulating purchase histories (experimental)
+library(PurchaseSims)
+
+# Load tidyverse
+library(tidyverse)
+
+# Load Marked
+library(marked)
+
+
+# Helper functions --------------------------------------------------------
+
+# Calculate super population size 
+superPopSize <- function(N, nocc, phi) {
+  (nocc - 1) * (1 - phi) * N + N
+}
+
+# Calculate entrance probability
+entranceProb <- function(N, Ns, nocc) {
+  (Ns - N) / ((nocc - 1) * Ns)
+}
+
+```
+
+
+```{r simulateData}
+# Simulation parameters
+N.true <- 1e4
+phi.true <- 0.85
+p.true <- 0.70
+nocc <- 8
+Ns.true <- superPopSize(N.true, nocc, phi.true) 
+pent.true <- entranceProb(N.true, Ns.true, nocc)
+pBirth <- 1
+
+# Simulate data
+output <- simul_popan(
+  phi = rep(phi.true, nocc),
+  p = rep(p.true, nocc),
+  pent = rep(pent.true, nocc - 1),
+  Ns = Ns.true,
+  pBirth = rep(pBirth, nocc)
+)
+
+# Create histories
+CH <- unite(as_tibble(output$CH), "ch", sep = ",") %>%
+  mutate(ID = row_number()) %>%
+  filter(ch != paste(rep(0, nocc), collapse = ","))
+
+# Summarize histories
+captureData <- CH %>% 
+  group_by(ch) %>% 
+  summarize(freq = n())
+
+```
+
+```{r runModel}
+# Process data
+proc <- process.data(captureData %>% as.data.frame(), 
+                     model = "js", 
+                     begin.time = 1)
+
+# Make design data
+ddl <- make.design.data(proc)
+
+# Run model using CMAES optimization method
+mod <- crm(
+  proc,
+  ddl,
+  hessian = TRUE,
+  method = "CMAES",
+  detectAllBirths = TRUE
+)
+
+```
+
+```{r evaluateModel}
+# Calculate model predictions 
+modPred <-
+  predict(mod,
+          ddl = ddl,
+          se = TRUE)
+
+# Error in super population size
+Ns.pred <- sum(captureData$freq) + modPred$N[1]
+(Ns.pred - Ns.true) / Ns.true
+
+# Error in entrance probability
+pent.pred <- modPred$pent$estimate[1]
+(pent.pred - pent.true) / pent.true
+
+# Error in recruitment
+B <- Ns.true * pent.true
+B.pred <- Ns.pred * pent.pred
+(B.pred - B) / B
+
+```
+
+
+```{r simulateGroupData}
+
+# Simulation parameters
+N.true2 <- 1e4
+phi.true2 <- phi.true/2
+p.true2 <- p.true/2
+Ns.true2 <- superPopSize(N.true2, nocc, phi.true2) 
+pent.true2 <- entranceProb(N.true2, Ns.true2, nocc)
+
+# Simulate data
+output2 <- simul_popan(
+  phi = rep(phi.true2, nocc),
+  p = rep(p.true2, nocc),
+  pent = rep(pent.true2, nocc - 1),
+  Ns = Ns.true2,
+  pBirth = rep(pBirth, nocc)
+)
+
+# Create histories
+CH2 <- unite(as_tibble(output2$CH), "ch", sep = ",") %>%
+  mutate(ID = row_number()) %>%
+  filter(ch != paste(rep(0, nocc), collapse = ","))
+
+# Summarize histories
+captureData <- full_join(CH %>% mutate(groupID = "A"),
+                         CH2 %>% mutate(groupID = "B")) %>% 
+  mutate(groupID = as.factor(groupID)) %>% 
+  group_by(groupID, ch) %>% 
+  summarize(freq = n())
+
+```
+
+```{r runGroupModel}
+
+# Process data
+proc = process.data(captureData %>% as.data.frame(), 
+                    model = "js", 
+                    begin.time = 1,
+                    groups = "groupID")
+
+# Make design data
+ddl = make.design.data(proc)
+
+# Run model with group variable
+mod = crm(proc, 
+          ddl, 
+          model.parameters = list(Phi = list(formula = ~ groupID),
+                                  p = list(formula = ~ groupID),
+                                  pent = list(formula = ~ groupID),
+                                  N = list(formula = ~ groupID)),
+          method = "CMAES",
+          detectAllBirths = T,
+          hessian = TRUE
+          # control = list(maxit = 1e3)
+          )
+
+
+```
+
+```{r evaluateGroupModel}
+# Calculate model predictions
+modPred <-
+  predict(mod,
+          ddl = ddl,
+          se = TRUE)
+
+# Error in super population size
+Ns.pred1 <- sum(captureData$freq[captureData$groupID == "A"]) + modPred$N[1,2]
+Ns.pred2 <- sum(captureData$freq[captureData$groupID == "B"]) + modPred$N[2,2]
+
+(Ns.pred1 - Ns.true) / Ns.true
+(Ns.pred2 - Ns.true2) / Ns.true2
+
+# Error in entrance probability
+pent.pred1 <- modPred$pent$estimate[1]
+pent.pred2 <- modPred$pent$estimate[9]
+
+(pent.pred1 - pent.true) / pent.true
+(pent.pred2 - pent.true2) / pent.true2
+
+# Error in recruitment
+B <- Ns.true * pent.true
+B2 <- Ns.true2 * pent.true2
+B.pred1 <- Ns.pred1 * pent.pred1
+B.pred2 <- Ns.pred2 * pent.pred2
+
+(B.pred1 - B) / B
+(B.pred2 - B2) / B2
+```
+

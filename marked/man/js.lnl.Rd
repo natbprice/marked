@@ -5,7 +5,8 @@
 \title{Likelihood function for Jolly-Seber model using Schwarz-Arnason POPAN
 formulation}
 \usage{
-js.lnl(par, model_data, debug = FALSE, nobstot, jsenv)
+js.lnl(par, model_data, debug = FALSE, nobstot, jsenv,
+  detectAllBirths = FALSE)
 }
 \arguments{
 \item{par}{vector of parameter values}

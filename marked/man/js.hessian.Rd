@@ -4,7 +4,7 @@
 \alias{js.hessian}
 \title{Compute variance-covariance matrix for fitted JS model}
 \usage{
-js.hessian(model)
+js.hessian(model, ...)
 }
 \arguments{
 \item{model}{fitted JS model from function crm}
