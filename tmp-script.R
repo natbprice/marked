@@ -20,7 +20,7 @@ entranceProb <- function(N, Ns, nocc) {
 
 # Simulate data -----------------------------------------------------------
 
-N.true <- 400e3
+N.true <- 1e4
 phi.true <- 0.85
 p.true <- 0.70
 nocc <- 8
@@ -40,85 +40,25 @@ alive <- colSums(output$state)
 plot(alive)
 
 
-CH <- unite(as_tibble(output$CH), "ch", sep = "") %>%
+CH <- unite(as_tibble(output$CH), "ch", sep = ",") %>%
   mutate(ID = row_number()) %>%
-  filter(ch != paste(rep(0, nocc), collapse = ""))
+  filter(ch != paste(rep(0, nocc), collapse = ","))
 
 captureData <- CH %>% 
   group_by(ch) %>% 
-  summarize(freq = n()) 
-
-ch <- t(captureData %>%
-          pull(ch) %>%
-          sapply(function(s)
-            substring(s, 1:nchar(s), 1:nchar(s))) %>% 
-          apply(2, as.numeric))
-
-freq <- captureData %>% 
-  pull(freq)
-
-first <- apply(ch, 1, function(x) {first(which(x == 1))})
-firstMat <- t(sapply(first, function(x, nocc) {
-  return(c(rep(0, x[1] - 1), 1, rep(0, nocc - x[1])))
-}, nocc = nocc))
-u <- colSums(freq * firstMat)
-udot = sum(u)
-
-# Coefficients
-beta.N <- log(Ns.true - udot)
-beta.phi <- log(phi.true)
-beta.p <- log(p.true)
-beta.pent <- log(pent.true)
-
-# Parameters
-Ns <- exp(beta.N) + udot
-phi <- rep(exp(beta.phi), nocc)
-p <- rep(exp(beta.p), nocc)
-beta <- rep(exp(beta.pent), nocc - 1)
-beta <- c(1 - sum(beta), beta)
-
-# psi <- numeric(nocc)
-# psi[1] <- beta[1]
-# for(i in 1:(nocc - 1)) {
-#   psi[i + 1] <- beta[i + 1] + beta[1] * prod((1 - p[1:i]) * phi[1:i])
-#   # psi[i + 1] <- psi[i] * (1 - p[i]) * phi[i] + beta[i + 1]
-# }
-p.entry <- numeric(nocc)
-p.entry[1] <- beta[1] * p[1]
-for(i in 1:(nocc - 1)) {
-  p.entry[i + 1] <- beta[i + 1] + p[i+1] * beta[1] * prod((1 - p[1:i]) * phi[1:i])
-  # psi[i + 1] <- psi[i] * (1 - p[i]) * phi[i] + beta[i + 1]
-}
-
-# Multinomial coefficient
-lmultinomial <- function (x) {
-  lfactorial(sum(x)) - sum(lfactorial(x))
-}
-
-Ns.vec <- seq(udot, Ns.true * 1.2, length.out = 20)
-lnl1a <- numeric(length(Ns.vec))
-l1a <- numeric(length(Ns.vec))
-for(i in 1:length(Ns.vec)) {
-  
-  # psi is multiplied by p, but all births are detected...
-  lnl1a[i] <- lchoose(Ns.vec[i], udot) +
-    udot * log(sum(p.entry)) +
-    (Ns.vec[i] - udot) * log(1 - sum(p.entry))
-  
-}
-
-plot(Ns.vec, lnl1a)
-lines(c(Ns,Ns), c(min(lnl1a), max(lnl1a)))
-
-lnl1b <- lmultinomial(u) + 
-  sum(u * log((psi * p)/sum(psi * p)))
-
-if(f_eval %% 100 == 0 | f_eval == 1){browser()}
-
-lnl <- lnl - (lnl1a + lnl1b)
-
+  summarize(freq = n())
 
 p.ch <- process.ch(captureData %>% pull(ch), captureData %>% pull(freq), all = T)
+
+# Calulate number of unmarked
+if (is.null(p.ch$group)) {
+  u <- tapply(p.ch$freq, list(p.ch$first), sum)
+} else {
+  u <- tapply(p.ch$freq,
+              list(p.ch$first, model_data$group),
+              sum)
+}
+udot <- sum(u)
 
 # Run CJS model
 proc.cjs = process.data(captureData %>% as.data.frame(), model = "cjs", begin.time = 1)
@@ -128,15 +68,11 @@ mod.cjs = crm(proc.cjs, ddl.cjs, hessian = TRUE)
 proc = process.data(captureData %>% as.data.frame(), model = "js", begin.time = 1)
 ddl = make.design.data(proc)
 
-initial.true <- list(Phi = c(`(Intercept)` = log(phi.true)), 
-                     p = c(`(Intercept)` = log(p.true)),
-                     pent = c(`(Intercept)` = log(pent.true)),
-                     N = c(`(Intercept)` = log(Ns.true - sum(captureData$freq))))
-initial.cjs <- list(Phi = c(`(Intercept)` = mod.cjs$results$beta$Phi), 
-                     p = c(`(Intercept)` = mod.cjs$results$beta$p),
-                     pent = c(`(Intercept)` = log(mean(u/udot))),
-                     N = c(`(Intercept)` = log(udot)))
-initial.rand <- lapply(initial.true, function(x) x*runif(1, 0.8, 1.2))
+
+initial.cjs <- list(Phi = mod.cjs$results$beta$Phi, 
+                     p  = mod.cjs$results$beta$p,
+                     pent  = log(mean(u/udot)),
+                     N  = log(udot))
 mod = crm(proc, ddl, hessian = TRUE, 
           initial = initial.cjs)
 
@@ -156,4 +92,118 @@ B.pred <- Ns.pred * pent.pred
 
 (Ns.pred - Ns.true) / Ns.true
 (pent.pred - pent.true) / pent.true
+
+
+# Groups ------------------------------------------------------------------
+
+N.true2 <- 1e4
+phi.true2 <- phi.true/2
+p.true2 <- p.true/2
+Ns.true2 <- superPopSize(N.true2, nocc, phi.true2) 
+pent.true2 <- entranceProb(N.true2, Ns.true2, nocc)
+
+output2 <- simul_popan(
+  phi = rep(phi.true2, nocc),
+  p = rep(p.true2, nocc),
+  pent = rep(pent.true2, nocc - 1),
+  Ns = Ns.true2,
+  pBirth = rep(pBirth, nocc)
+)
+
+CH2 <- unite(as_tibble(output2$CH), "ch", sep = ",") %>%
+  mutate(ID = row_number()) %>%
+  filter(ch != paste(rep(0, nocc), collapse = ","))
+
+captureData <- full_join(CH %>% mutate(groupID = "A"),
+                         CH2 %>% mutate(groupID = "B")) %>% 
+  mutate(groupID = as.factor(groupID)) %>% 
+  group_by(groupID, ch) %>% 
+  summarize(freq = n())
+
+p.ch <- process.ch(captureData %>% pull(ch), captureData %>% pull(freq), all = T)
+
+# Calulate number of unmarked
+if (is.null(captureData$groupID)) {
+  u <- tapply(p.ch$freq, list(p.ch$first), sum)
+} else {
+  u <- tapply(p.ch$freq,
+              list(p.ch$first, pull(captureData, groupID)),
+              sum)
+}
+udot <- colSums(u)
+
+# Run CJS model
+proc.cjs = process.data(captureData %>% as.data.frame(),
+                        model = "cjs", 
+                        begin.time = 1,
+                        groups = "groupID")
+ddl.cjs = make.design.data(proc.cjs)
+mod.cjs = crm(
+  proc.cjs,
+  ddl.cjs,
+  model.parameters = list(Phi = list(formula = ~ groupID),
+                          p = list(formula = ~ groupID)),
+  hessian = TRUE
+)
+
+modPred.cjs <-
+  predict(mod.cjs,
+          ddl = ddl.cjs,
+          se = TRUE)
+
+proc = process.data(captureData %>% as.data.frame(), 
+                    model = "js", 
+                    begin.time = 1,
+                    groups = "groupID")
+ddl = make.design.data(proc)
+
+
+pent.ini1 <- u[nocc,1]/udot[[1]]
+pent.ini2 <- u[nocc,2]/udot[[2]]
+initial.cjs <- list(Phi = mod.cjs$results$beta$Phi,
+                    p = mod.cjs$results$beta$p,
+                    pent  = c(`(Intercept)` = log(pent.ini1),
+                              groupIDB = log(pent.ini2) - log(pent.ini1)),
+                    N  = c(`(Intercept)` = log(udot[[1]]), 
+                           groupIDB = log(udot[[2]]) - log(udot[[1]])))
+
+
+mod = crm(proc, 
+          ddl, 
+          model.parameters = list(Phi = list(formula = ~ groupID),
+                                  p = list(formula = ~ groupID),
+                                  pent = list(formula = ~ groupID),
+                                  N = list(formula = ~ groupID)),
+          # initial = initial.cjs,
+          hessian = TRUE)
+
+
+
+# Calculate model predictions of retention and purchase probabilities
+modPred <-
+  predict(mod,
+          ddl = ddl,
+          se = TRUE)
+
+Ns.pred1 <- udot[1] + modPred$N[1,2]
+Ns.pred2 <- udot[2] + modPred$N[2,2]
+
+(Ns.pred1 - Ns.true) / Ns.true
+(Ns.pred2 - Ns.true2) / Ns.true2
+
+pent.pred1 <- modPred$pent$estimate[1]
+pent.pred2 <- modPred$pent$estimate[9]
+
+(pent.pred1 - pent.true) / pent.true
+(pent.pred2 - pent.true2) / pent.true2
+
+B <- Ns.true * pent.true
+B2 <- Ns.true2 * pent.true2
+B.pred1 <- Ns.pred1 * pent.pred1
+B.pred2 <- Ns.pred2 * pent.pred2
+
+(B.pred1 - B) / B
+(B.pred2 - B2) / B2
+
+
 

@@ -163,61 +163,82 @@ js.lnl <- function(par, model_data, debug = FALSE, nobstot, jsenv) {
   detectAllBirths <- T
   if (detectAllBirths) {
     
+    # browser()
+    
     # Warning about experimental state of code
     warning("Running experimental likelihood function")
+    
+    # Total number of captured individuals
+    if (nrow(model_data$N.dm) == 1) {
+      udot <- sum(model_data$imat$freq)
+    } else {
+      udot <- tapply(model_data$imat$freq, model_data$group, sum)
+    }
+    
+    # Number of unmarked individuals captured on each occassion
+    if (is.null(model_data$group)) {
+      u <- tapply(model_data$imat$freq, list(model_data$imat$first), sum)
+      u <- as.matrix(u)
+    } else {
+      u <- tapply(model_data$imat$freq,
+                  list(model_data$imat$first, model_data$group),
+                  sum)
+    }
+    
+    # Super population size
+    Ns <- exp(as.vector(model_data$N.dm %*% beta.N)) + udot
 
     # Number of capture occasions
     k <- nocc
     
-    # Probability of detection (k x 1 vector)
-    p.time <- diag(plogis(matrix(
-      as.vector(model_data$p.dm %*% beta.p),
-      ncol = nocc,
-      nrow = nrow(model_data$p.dm) / (nocc),
-      byrow = TRUE
-    )))
+    # Initialize likelihood
+    lnl <- cjslnl$lnl
     
-    # Pobability of survival (k x 1 vector)
-    phi.time <- diag(Phis)
-    
-    # Entrance probabilities  (k x 1 vector)
-    beta <- diag(pents)
-    
-    # Probability of surviving undetected (k x 1 vector)
-    theta <- numeric(k)
-    theta[1] <- beta[1] * p.time[1]
-    for(i in 1:(k - 1)) {
-      theta[i + 1] <-
-        beta[i + 1] + 
-        p.time[i + 1] * beta[1] * prod((1 - p.time[1:i]) * phi.time[1:i])
+    # Loop over groups
+    for (j in 1:length(Ns)) {
+      # browser()
+      index0 <- (j - 1) * nocc + 1
+      index1 <- j * nocc
+      ps <- ps.dummy[index0:index1, ]
+      pents <- pents.dummy[index0:index1, ]
+      phis <- Phis.dummy[index0:index1, ]
+      
+      # # Probability of detection (k x 1 vector)
+      # p.time <- diag(plogis(matrix(
+      #   as.vector(model_data$p.dm %*% beta.p),
+      #   ncol = nocc,
+      #   nrow = nrow(model_data$p.dm) / (nocc),
+      #   byrow = TRUE
+      # )))
+      
+      # # Pobability of survival (k x 1 vector)
+      # phi.time <- diag(Phis)
+      
+      # Entrance probabilities  (k x 1 vector)
+      beta <- diag(pents)
+      
+      # Probability of surviving undetected (k x 1 vector)
+      theta <- numeric(k)
+      p.time <- ps
+      phi.time <- phis
+      theta[1] <- beta[1] * p.time[1]
+      for (i in 1:(k - 1)) {
+        theta[i + 1] <-
+          beta[i + 1] +
+          p.time[i + 1] * beta[1] * prod((1 - p.time[1:i]) * phi.time[1:i])
+      }
+      
+      # First component of likelihood function
+      lnl1a <- lchoose(Ns[j], udot[j]) + udot[j] * log(sum(theta)) +
+        (Ns[j] - udot[j]) * log(1 - sum(theta))
+      
+      # Second component of likelihood function
+      lnl1b <- lfactorial(sum(u[,j])) - sum(lfactorial(u[,j])) +
+        sum(u[,j] * log((theta) / sum(theta)))
+      
+      # Total negative log-likelihood function
+      lnl <- lnl - (lnl1a + lnl1b)
     }
-    
-    # Matrix with 1 for first capture and 0 otherwise
-    first <- model_data$imat$first
-    firstMat <- t(sapply(first, function(x, nocc) {
-      return(c(rep(0, x[1] - 1), 1, rep(0, nocc - x[1])))
-    }, nocc = nocc))
-    
-    # Number of unmarked individuals captured on each occassion
-    u <- colSums(model_data$imat$freq * firstMat)
-    
-    # Total number of captured individuals
-    udot <- sum(u)
-    
-    # Super population size
-    Ns <- exp(as.vector(model_data$N.dm %*% beta.N)) + udot
-    
-    # First component of likelihood function
-    lnl1a <- lchoose(Ns, udot) + udot * log(sum(theta)) +
-      (Ns - udot) * log(1 - sum(theta))
-    
-    # Second component of likelihood function
-    lnl1b <- lfactorial(sum(u)) - sum(lfactorial(u)) + 
-      sum(u * log((theta)/sum(theta)))
-    
-    # Total negative log-likelihood function
-    lnl <- cjslnl$lnl - (lnl1a + lnl1b)
-    
   } else {
     
     # Original likilihood function

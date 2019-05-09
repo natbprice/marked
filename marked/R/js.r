@@ -125,7 +125,8 @@ js = function(x,
       Phi.fixed = parameters$Phi$fixed,
       p.fixed = parameters$p$fixed,
       pent.fixed = parameters$pent$fixed,
-      time.intervals = time.intervals
+      time.intervals = time.intervals,
+      group = x$group
     )
     #  If data are to be accumulated based on ch and design matrices do so here;
     if (accumulate)
