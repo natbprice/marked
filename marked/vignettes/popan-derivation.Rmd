@@ -142,9 +142,9 @@ output <- simul_popan(
 )
 
 # Create histories
-CH <- unite(as_tibble(output$CH), "ch", sep = ",") %>%
+CH <- unite(as_tibble(output$CH), "ch", sep = "") %>%
   mutate(ID = row_number()) %>%
-  filter(ch != paste(rep(0, nocc), collapse = ","))
+  filter(ch != paste(rep(0, nocc), collapse = ""))
 
 # Summarize histories
 captureData <- CH %>% 
@@ -215,9 +215,9 @@ output2 <- simul_popan(
 )
 
 # Create histories
-CH2 <- unite(as_tibble(output2$CH), "ch", sep = ",") %>%
+CH2 <- unite(as_tibble(output2$CH), "ch", sep = "") %>%
   mutate(ID = row_number()) %>%
-  filter(ch != paste(rep(0, nocc), collapse = ","))
+  filter(ch != paste(rep(0, nocc), collapse = ""))
 
 # Summarize histories
 captureData <- full_join(CH %>% mutate(groupID = "A"),
@@ -285,4 +285,39 @@ B.pred2 <- Ns.pred2 * pent.pred2
 (B.pred1 - B) / B
 (B.pred2 - B2) / B2
 ```
+
+```{r}
+# library(RMark)
+
+
+proc.Rmark <-
+  RMark::process.data(captureData %>% as.data.frame(), model = "POPAN", groups = "groupID")
+
+ddl.Rmark <- RMark::make.design.data(proc.Rmark)
+
+mod.Rmark <- RMark::mark(
+    proc.Rmark,
+    ddl.Rmark,
+    model.parameters = list(
+      Phi = list(formula =  ~ groupID),
+      p = list(formula =  ~ groupID),
+      pent = list(formula =  ~ groupID),
+      N = list(formula =  ~ groupID)
+    )
+  )
+
+# Replace results in RMark object with marked results
+mod.Rmark2 <- mod.Rmark
+mod.Rmark2$results$beta$estimate <- c(mod$results$beta$Phi,
+  mod$results$beta$p,
+  mod$results$beta$pent,
+  mod$results$beta$N)
+mod.Rmark2$results$beta.vcv <- mod$results$beta.vcv
+
+# Derive abundance
+modAbundDerived <- RMark::popan.derived(proc.Rmark, mod.Rmark2)
+
+modAbundDerived$Nbyocc
+```
+
 
