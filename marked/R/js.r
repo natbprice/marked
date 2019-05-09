@@ -166,7 +166,7 @@ js = function(x,
       counts = mod$counts
     } else if ("CMAES" %in% method)
     {
-      mod = cma_es(
+      mod = cmaes::cma_es(
         par,
         js.lnl,
         model_data = model_data,
