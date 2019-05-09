@@ -74,7 +74,9 @@ initial.cjs <- list(Phi = mod.cjs$results$beta$Phi,
                      pent  = log(mean(u/udot)),
                      N  = log(udot))
 mod = crm(proc, ddl, hessian = TRUE, 
-          initial = initial.cjs)
+          # initial = initial.cjs,
+          method = "CMAES",
+          itnmax = 10e3)
 
 
 
@@ -175,6 +177,7 @@ mod = crm(proc,
                                   pent = list(formula = ~ groupID),
                                   N = list(formula = ~ groupID)),
           # initial = initial.cjs,
+          method = "CMAES",
           hessian = TRUE)
 
 

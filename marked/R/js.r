@@ -151,10 +151,29 @@ js = function(x,
         par,
         js.lnl,
         model_data = model_data,
-        Phi.links = NULL,
-        p.links = NULL,
+        # Phi.links = NULL,
+        # p.links = NULL,
         method = "SANN",
         hessian = FALSE,
+        debug = debug,
+        control = control,
+        jsenv = jsenv,
+        ...
+      )
+      par = mod$par
+      convergence = mod$convergence
+      lnl = mod$value
+      counts = mod$counts
+    } else if ("CMAES" %in% method)
+    {
+      mod = cma_es(
+        par,
+        js.lnl,
+        model_data = model_data,
+        # Phi.links = NULL,
+        # p.links = NULL,
+        # method = "SANN",
+        # hessian = FALSE,
         debug = debug,
         control = control,
         jsenv = jsenv,
